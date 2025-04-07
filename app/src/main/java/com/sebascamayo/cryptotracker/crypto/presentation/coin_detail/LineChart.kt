@@ -121,9 +121,15 @@ fun LineChart(
                 style = textStyle.copy(textAlign = TextAlign.Center)
             )
         }
-        val maxXLabelWidth = xLabelTextLayoutResults.maxOfOrNull { it.size.width } ?: 0
-        val maxXLabelHeight = xLabelTextLayoutResults.maxOfOrNull { it.size.height } ?: 0
-        val maxXLabelLineCount = xLabelTextLayoutResults.maxOfOrNull { it.lineCount } ?: 0
+        val maxXLabelWidth = xLabelTextLayoutResults.maxOfOrNull {
+            it.size.width
+        } ?: 0
+        val maxXLabelHeight = xLabelTextLayoutResults.maxOfOrNull {
+            it.size.height
+        } ?: 0
+        val maxXLabelLineCount = xLabelTextLayoutResults.maxOfOrNull {
+            it.lineCount
+        } ?: 0
         val xLabelLineHeight = if(maxXLabelLineCount > 0) {
             maxXLabelHeight / maxXLabelLineCount
         } else 0
@@ -136,6 +142,8 @@ fun LineChart(
 
         // Calculo del Y-label
         val labelViewPortHeightPx = viewPortHeightPx + xLabelLineHeight
+        // En este caso se excluye el ultimo
+        // porque en la division los espacios son un valor menor a la cantidad
         val labelCountExcludingLastLabel =
             ((labelViewPortHeightPx / (xLabelLineHeight + minLabelSpacingYPx))).toInt()
 
@@ -181,7 +189,7 @@ fun LineChart(
                 } else style.unselectedColor
             )
 
-            // Mostrar lineas cuadriculadas
+            // Mostrar lineas cuadriculadas por valor x
             if(showHelperLines) {
                 drawLine(
                     color = if(selectedDataPointIndex == index) {
@@ -233,14 +241,19 @@ fun LineChart(
             }
         }
 
-
+        // Altura en px de la etiqueta por la cantidad
         val heightRequiredForLabels = xLabelLineHeight *
                 (labelCountExcludingLastLabel + 1)
+        // Espacio del viewport de labels menos el espacio de los labels
         val remainingHeightForLabels = labelViewPortHeightPx - heightRequiredForLabels
+        // El espacio que sobra entre la cantidad de espacios que debe haber
         val spaceBetweenLabels = remainingHeightForLabels / labelCountExcludingLastLabel
 
+        // Dibujamos los labels en Y
         yLabelTextLayoutResults.forEachIndexed { index, result ->
+            // En x añadimos el espacio sobrante segun el tamaño del label, asi todos estan alineados
             val x = horizontalPaddingPx + maxYLabelWidth - result.size.width.toFloat()
+            // Desde el top del viewport sumando según el index por padding más la altura del label
             val y = viewPortTopY +
                     index * (xLabelLineHeight + spaceBetweenLabels) -
                     xLabelLineHeight / 2f
@@ -253,6 +266,7 @@ fun LineChart(
                 color = style.unselectedColor
             )
 
+            // Mostrar lineas cuadriculadas por valor y
             if(showHelperLines) {
                 drawLine(
                     color = style.unselectedColor,
@@ -269,13 +283,17 @@ fun LineChart(
             }
         }
 
-        // visibleDataPointsIndices = 5..20
+        // Crear las entidades de los puntos
+        // visibleDataPointsIndices = 0..9
         drawPoints = visibleDataPointsIndices.map {
             val x = viewPortLeftX + (it - visibleDataPointsIndices.first) *
                     xLabelWidth + xLabelWidth / 2f
             // [minYValue; maxYValue] -> [0; 1]
+            // radio otorga un porcentaje que en que altura debe se va a restar del viewport
             val ratio = (dataPoints[it].y - minYValue) / (maxYValue - minYValue)
             val y = viewPortBottomY - (ratio * viewPortHeightPx)
+
+            // Creamos los datapoints en la lista
             DataPoint(
                 x = x,
                 y = y,
@@ -283,6 +301,8 @@ fun LineChart(
             )
         }
 
+        // Los connectionPoints nos permiten realizar las curvas
+        // Un punto arriba y otro abajo en la linea
         val conPoints1 = mutableListOf<DataPoint>()
         val conPoints2 = mutableListOf<DataPoint>()
         for(i in 1 until drawPoints.size) {
@@ -297,10 +317,14 @@ fun LineChart(
             conPoints2.add(DataPoint(x, y2, ""))
         }
 
+        // Creamos la linea
         val linePath = Path().apply {
             if(drawPoints.isNotEmpty()) {
+
+                // Primera posicion del primer punto
                 moveTo(drawPoints.first().x, drawPoints.first().y)
 
+                // Creamos los distintos puntos de la curva de bezier
                 for(i in 1 until drawPoints.size) {
                     cubicTo(
                         x1 = conPoints1[i - 1].x,
@@ -313,6 +337,7 @@ fun LineChart(
                 }
             }
         }
+        // Dibujamos la linea
         drawPath(
             path = linePath,
             color = style.chartLineColor,
@@ -322,6 +347,7 @@ fun LineChart(
             )
         )
 
+        // Dibujar los puntos
         drawPoints.forEachIndexed { index, point ->
             if(isShowingDataPoints) {
                 val circleOffset = Offset(
@@ -354,6 +380,7 @@ fun LineChart(
     }
 }
 
+// Obtenemos el index del datapoint al realizar una accion en el canva
 private fun getSelectedDataPointIndex(
     touchOffsetX: Float,
     triggerWidth: Float,
@@ -401,10 +428,12 @@ private fun LineChartPreview() {
                 )
             }
         }
+
+        // Funcion Compose
         LineChart(
             dataPoints = dataPoints,
             style = style,
-            visibleDataPointsIndices = 0..19,
+            visibleDataPointsIndices = 0..9,
             unit = "$",
             modifier = Modifier
                 .width(700.dp)

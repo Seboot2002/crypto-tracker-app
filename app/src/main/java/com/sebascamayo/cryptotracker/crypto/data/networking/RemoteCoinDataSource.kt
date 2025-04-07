@@ -27,7 +27,7 @@ class RemoteCoinDataSource(
 
         return safeCall<CoinsResponseDto> {
             httpClient.get(
-                urlString = constructUrl("/assets?apiKey=")
+                urlString = constructUrl("/assets?apiKey=${BuildConfig.COIN_API}")
             )
         }.map { response ->
             response.data.map { it.toCoin() }
@@ -52,7 +52,7 @@ class RemoteCoinDataSource(
         return safeCall<CoinHistoryDto> {
 
             httpClient.get(
-                urlString = constructUrl("/assets/$coinId/history?apiKey=")
+                urlString = constructUrl("/assets/$coinId/history?apiKey=${BuildConfig.COIN_API}")
             ) {
                 parameter("interval", "h6")
                 parameter("start", startMillis)

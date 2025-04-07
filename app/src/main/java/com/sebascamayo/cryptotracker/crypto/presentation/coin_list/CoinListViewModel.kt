@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sebascamayo.cryptotracker.core.domain.utils.onError
 import com.sebascamayo.cryptotracker.core.domain.utils.onSuccess
 import com.sebascamayo.cryptotracker.crypto.domain.CoinDataSource
+import com.sebascamayo.cryptotracker.crypto.presentation.coin_detail.DataPoint
 import com.sebascamayo.cryptotracker.crypto.presentation.models.CoinUi
 import com.sebascamayo.cryptotracker.crypto.presentation.models.toCoinUi
 import kotlinx.coroutines.channels.Channel
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 class CoinListViewModel(
     private val coinDataSource: CoinDataSource
@@ -39,14 +41,9 @@ class CoinListViewModel(
     fun onAction(action: CoinListAction) {
         when(action) {
             is CoinListAction.OnCoinClick -> {
-                _state.update {
-                    it.copy(
-                        selectedCoin = action.coinUi
-                    )
-                }
-            }
 
-            CoinListAction.OnRefresh -> TODO()
+                selectCoin(action.coinUi)
+            }
         }
     }
 
@@ -65,6 +62,26 @@ class CoinListViewModel(
                     end = ZonedDateTime.now()
                 )
                 .onSuccess { history ->
+
+                    val datapoints = history
+                        .sortedBy { it.dateTime }
+                        .map {
+                            DataPoint(
+                                x = it.dateTime.hour.toFloat(),
+                                y = it.priceUsd.toFloat(),
+                                xLabel = DateTimeFormatter
+                                    .ofPattern("ha\nM/d")
+                                    .format(it.dateTime)
+                            )
+                        }
+
+                    _state.update {
+                        it.copy(
+                            selectedCoin = it.selectedCoin?.copy(
+                                coinPriceHistory = datapoints
+                            )
+                        )
+                    }
                     println("History: $history")
                 }
                 .onError { error ->
